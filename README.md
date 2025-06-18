@@ -82,10 +82,11 @@ Please cite the related works in your publications if it helps your research:
 ```
 
 ```
-@article{feng2021docscanner,
-  title={DocScanner: robust document image rectification with progressive learning},
+@article{feng2025docscanner,
+  title={DocScanner: Robust document image rectification with progressive learning},
   author={Feng, Hao and Zhou, Wengang and Deng, Jiajun and Tian, Qi and Li, Houqiang},
-  journal={International Journal of Computer Vision (IJCV)},
+  journal={International Journal of Computer Vision},
+  pages={1--20},
   year={2025}
 }
 ```
