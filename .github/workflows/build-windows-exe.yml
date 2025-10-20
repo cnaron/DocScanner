@@ -33,8 +33,11 @@ jobs:
 
       # 第4步：使用PyInstaller打包成.exe文件
       - name: Build executable with PyInstaller
-        run: pyinstaller --onefile --noconsole --icon=icon.ico scan.py
+      # 关键变更：添加 working-directory, 让命令在 DocScanner 子文件夹内执行
+      working-directory: ./DocScanner
+      run: pyinstaller --onefile --noconsole --icon=../icon.ico scan.py
 
+      
       # 第5步：上传打包好的文件作为产物（Artifact）
       - name: Upload artifact
         uses: actions/upload-artifact@v4
