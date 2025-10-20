@@ -1,0 +1,53 @@
+# 工作流的名称
+name: Build macOS Application
+
+# 触发工作流的事件
+on:
+  # 允许你手动在Actions页面点击按钮来运行这个工作流
+  workflow_dispatch:
+
+# 定义工作流中的任务
+jobs:
+  build:
+    # 指定任务运行在最新版的macOS虚拟环境上
+    runs-on: macos-latest
+
+    # 定义任务中的步骤
+    steps:
+      # 第1步：检出（下载）你的代码到虚拟环境中
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第2步：设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 第3步：安装依赖库
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # 第4步：使用PyInstaller打包成.app文件
+      - name: Build application with PyInstaller
+        # 【已修正】指定工作目录为 DocScanner 子文件夹
+        working-directory: ./DocScanner
+        run: pyinstaller --windowed --icon=../icon.ico scan.py
+
+      # 第5步：将生成的.app打包成zip（因为.app本质上是一个文件夹）
+      - name: Package the .app into a .zip file
+        # 【已修正】进入正确的目录进行压缩，以生成干净的zip包
+        working-directory: ./DocScanner/dist
+        run: zip -r ../../DocScanner-Mac.zip scan.app
+
+      # 第6步：上传打包好的.zip文件作为产物（Artifact）
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # 产物的名称
+          name: DocScanner-Mac-Portable
+          # 【已修正】指定正确的 .zip 文件路径
+          path: DocScanner-Mac.zip
