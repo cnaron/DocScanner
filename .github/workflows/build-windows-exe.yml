@@ -1,5 +1,5 @@
 # 工作流的名称
-name: Build macOS Application
+name: Build Windows Executable
 
 # 触发工作流的事件
 on:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,19 +23,15 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # 第4步：使用PyInstaller打包成.app文件
-      - name: Build application with PyInstaller
+      # 第4步：使用PyInstaller打包成.exe文件
+      - name: Build executable with PyInstaller
         # 【最终修正】不再切换目录，直接指定所有文件的路径
-        run: pyinstaller --windowed --icon=icon.ico --paths=./DocScanner ./DocScanner/scan.py
+        run: pyinstaller --onefile --noconsole --icon=icon.ico --paths=./DocScanner ./DocScanner/scan.py
 
-      # 第5步：将生成的.app打包成zip
-      - name: Package the .app into a .zip file
-        # 【最终修正】直接在根目录压缩 dist 文件夹中的 .app
-        run: zip -r DocScanner-Mac.zip dist/scan.app
-
-      # 第6步：上传打包好的.zip文件作为产物（Artifact）
+      # 第5步：上传打包好的文件作为产物（Artifact）
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DocScanner-Mac-Portable
-          path: DocScanner-Mac.zip
+          name: DocScanner-Portable
+          # 【最终修正】打包后的文件路径在根目录下的 dist 文件夹中
+          path: dist/scan.exe
