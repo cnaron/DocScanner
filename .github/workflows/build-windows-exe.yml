@@ -1,7 +1,5 @@
-# 工作流的名称
 name: Build Windows Executable
 
-# 触发工作流的事件
 on:
   workflow_dispatch:
 
@@ -23,15 +21,18 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # 第4步：使用PyInstaller打包成.exe文件
+      # 【新增的调试步骤】
+      # 在打包前，递归列出当前目录下的所有文件，让我们能看到目录结构
+      - name: List files in the repository
+        run: dir /s
+      
+      # 【最终修正】
+      # 使用 Windows 风格的反斜杠 \ 作为路径分隔符
       - name: Build executable with PyInstaller
-        # 【最终修正】不再切换目录，直接指定所有文件的路径
-        run: pyinstaller --onefile --noconsole --icon=icon.ico --paths=./DocScanner ./DocScanner/scan.py
+        run: pyinstaller --onefile --noconsole --icon=icon.ico --paths=.\DocScanner .\DocScanner\scan.py
 
-      # 第5步：上传打包好的文件作为产物（Artifact）
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: DocScanner-Portable
-          # 【最终修正】打包后的文件路径在根目录下的 dist 文件夹中
           path: dist/scan.exe
