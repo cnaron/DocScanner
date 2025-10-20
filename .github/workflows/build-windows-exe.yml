@@ -22,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # 使用Python 3.10版本
+          python-version: '3.10'
 
       # 第3步：安装依赖库
       - name: Install dependencies
@@ -33,16 +33,15 @@ jobs:
 
       # 第4步：使用PyInstaller打包成.exe文件
       - name: Build executable with PyInstaller
-      # 关键变更：添加 working-directory, 让命令在 DocScanner 子文件夹内执行
-      working-directory: ./DocScanner
-      run: pyinstaller --onefile --noconsole --icon=../icon.ico scan.py
+        # 【已修正】指定工作目录为 DocScanner 子文件夹
+        working-directory: ./DocScanner
+        run: pyinstaller --onefile --noconsole --icon=../icon.ico scan.py
 
-      
       # 第5步：上传打包好的文件作为产物（Artifact）
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           # 产物的名称，最终下载的zip文件名会是这个
           name: DocScanner-Portable
-          # 要上传的文件路径，即打包后生成的.exe文件
-          path: dist/scan.exe
+          # 【已修正】指定正确的 .exe 文件路径
+          path: DocScanner/dist/scan.exe
