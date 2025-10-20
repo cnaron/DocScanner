@@ -20,15 +20,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # 安装 CPU 版 PyTorch（避免CUDA依赖）
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install pyinstaller
+          pip install pyinstaller gdown
+
+      # ⭐ 新增：自动下载预训练模型到 model_pretrained/
+      - name: Download pretrained model
+        shell: bash
+        run: |
+          mkdir -p model_pretrained
+          # 官方 README 给出的 DocScanner-L 文件夹链接（Google Drive）
+          # gdown 支持 --folder，直接把整个文件夹拉到 model_pretrained/
+          gdown --fuzzy --folder "https://drive.google.com/drive/folders/1W1_DJU8dfEh6FqDYqFQ7ypR38Z8c5r4D" -O model_pretrained
+          ls -lah model_pretrained
 
       - name: Verify model exists
         shell: bash
         run: |
-          if [ ! -d "model_pretrained" ]; then
-            echo "model_pretrained 目录不存在，请先把预训练模型提交到仓库或改为下载步骤"
+          if [ ! -d "model_pretrained" ] || [ -z "$(ls -A model_pretrained)" ]; then
+            echo "模型下载失败：model_pretrained 为空"
             exit 1
           fi
 
@@ -43,13 +52,11 @@ jobs:
             --add-data "app;app" ^
             --hidden-import torch ^
             app/main.py
-          # 生成的 exe 在 dist/DocScanner.exe
 
       - name: Package portable zip
         run: |
           mkdir DocScanner-Portable
           copy dist\\DocScanner.exe DocScanner-Portable\\
-          # 附带一个启动说明
           echo Double-click DocScanner.exe to start. > DocScanner-Portable\\README.txt
           powershell -command "Compress-Archive -Path DocScanner-Portable\\* -DestinationPath DocScanner-Portable.zip"
 
