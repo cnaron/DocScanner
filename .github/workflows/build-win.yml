@@ -8,8 +8,10 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -17,19 +19,20 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # CPU 版 PyTorch：最通用、朋友无需装 CUDA
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install pyinstaller gdown
 
-      # ⭐ 新增：自动下载预训练模型到 model_pretrained/
-      - name: Download pretrained model
+      # ⭐ 自动下载预训练模型到 model_pretrained/
+      - name: Download pretrained model (DocScanner-L)
         shell: bash
         run: |
           mkdir -p model_pretrained
-          # 官方 README 给出的 DocScanner-L 文件夹链接（Google Drive）
-          # gdown 支持 --folder，直接把整个文件夹拉到 model_pretrained/
+          # 采用官方 README 提供的 Google Drive 文件夹链接（可替换为你自己的镜像）
           gdown --fuzzy --folder "https://drive.google.com/drive/folders/1W1_DJU8dfEh6FqDYqFQ7ypR38Z8c5r4D" -O model_pretrained
           ls -lah model_pretrained
 
@@ -41,7 +44,16 @@ jobs:
             exit 1
           fi
 
+      # 确保有空目录，避免 --add-data 出错
+      - name: Prepare empty runtime dirs
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path distorted | Out-Null
+          New-Item -ItemType Directory -Force -Path rectified | Out-Null
+
+      # ✅ 用 cmd 壳，续行符使用 ^
       - name: Build EXE with PyInstaller
+        shell: cmd
         run: |
           pyinstaller --noconfirm --onefile ^
             --name DocScanner ^
@@ -54,11 +66,12 @@ jobs:
             app/main.py
 
       - name: Package portable zip
+        shell: pwsh
         run: |
-          mkdir DocScanner-Portable
-          copy dist\\DocScanner.exe DocScanner-Portable\\
-          echo Double-click DocScanner.exe to start. > DocScanner-Portable\\README.txt
-          powershell -command "Compress-Archive -Path DocScanner-Portable\\* -DestinationPath DocScanner-Portable.zip"
+          New-Item -ItemType Directory -Force -Path DocScanner-Portable | Out-Null
+          Copy-Item dist\DocScanner.exe DocScanner-Portable\
+          Set-Content -Path DocScanner-Portable\README.txt -Value "Double-click DocScanner.exe to start."
+          Compress-Archive -Path DocScanner-Portable\* -DestinationPath DocScanner-Portable.zip -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
