@@ -2,7 +2,7 @@ name: Build macOS App
 
 on:
   workflow_dispatch:
-  # 如需自动触发，可取消注释：
+  # 如需自动触发，按需解开注释：
   # push:
   #   branches: [ main ]
   #   paths:
@@ -13,7 +13,6 @@ on:
 
 jobs:
   build-mac:
-    # 同时打 Apple Silicon 和 Intel 两个版本
     strategy:
       matrix:
         include:
@@ -27,6 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 可选：pip 缓存，加速依赖安装
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -35,13 +43,15 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools
+          # 🔧 预装这些以避免 macos-13 (x86_64) 上的 numpy 源码编译/mingw32 误判问题
+          pip install "numpy<2" scipy cython
           # 项目依赖
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-          # PyTorch（自动选择对应架构的轮子；macOS 会装 Metal/CPU 版）
+          # PyTorch（macOS 会装 Metal/CPU 版，适配 arm64/x86_64）
           pip install torch torchvision torchaudio
-          # 打包 & 下载工具
+          # 打包与模型下载
           pip install pyinstaller gdown
 
       - name: Download pretrained model (DocScanner-L)
@@ -64,7 +74,7 @@ jobs:
           mkdir -p distorted rectified app
 
       - name: Build .app with PyInstaller
-        # macOS 下 --add-data 用冒号分隔 src:dst
+        # macOS 下 --add-data 使用 冒号 分隔 src:dst
         run: |
           pyinstaller --noconfirm --windowed \
             --name "DocScanner" \
