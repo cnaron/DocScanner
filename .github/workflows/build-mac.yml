@@ -1,0 +1,90 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  # 如需自动触发，可取消注释：
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'app/**'
+  #     - 'inference.py'
+  #     - 'requirements.txt'
+  #     - '.github/workflows/build-mac.yml'
+
+jobs:
+  build-mac:
+    # 同时打 Apple Silicon 和 Intel 两个版本
+    strategy:
+      matrix:
+        include:
+          - runner: macos-14   # Apple Silicon (arm64)
+            arch: arm64
+          - runner: macos-13   # Intel (x86_64)
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          # 项目依赖
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          # PyTorch（自动选择对应架构的轮子；macOS 会装 Metal/CPU 版）
+          pip install torch torchvision torchaudio
+          # 打包 & 下载工具
+          pip install pyinstaller gdown
+
+      - name: Download pretrained model (DocScanner-L)
+        run: |
+          mkdir -p model_pretrained
+          if [ -z "$(ls -A model_pretrained 2>/dev/null)" ]; then
+            gdown --fuzzy --folder "https://drive.google.com/drive/folders/1W1_DJU8dfEh6FqDYqFQ7ypR38Z8c5r4D" -O model_pretrained
+          fi
+          ls -lah model_pretrained
+
+      - name: Verify model exists
+        run: |
+          if [ ! -d "model_pretrained" ] || [ -z "$(ls -A model_pretrained)" ]; then
+            echo "模型下载失败：model_pretrained 为空"
+            exit 1
+          fi
+
+      - name: Prepare runtime dirs
+        run: |
+          mkdir -p distorted rectified app
+
+      - name: Build .app with PyInstaller
+        # macOS 下 --add-data 用冒号分隔 src:dst
+        run: |
+          pyinstaller --noconfirm --windowed \
+            --name "DocScanner" \
+            --add-data "model_pretrained:model_pretrained" \
+            --add-data "inference.py:." \
+            --add-data "distorted:distorted" \
+            --add-data "rectified:rectified" \
+            --add-data "app:app" \
+            --hidden-import torch \
+            app/main.py
+          # 产物：dist/DocScanner.app
+
+      - name: Zip app
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent "DocScanner.app" "../DocScanner-mac-${{ matrix.arch }}.zip"
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DocScanner-mac-${{ matrix.arch }}
+          path: DocScanner-mac-${{ matrix.arch }}.zip
